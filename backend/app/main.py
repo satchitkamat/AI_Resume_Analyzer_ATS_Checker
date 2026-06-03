@@ -10,6 +10,10 @@ from app.models.resume import Resume
 
 from app.api.routes.resume import router as resume_router
 
+from app.api.routes.ats import (
+    router as ats_router
+)
+
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -23,6 +27,9 @@ app.include_router(auth_router)
 
 # Resume upload Routes
 app.include_router(resume_router)
+
+# ATS Router
+app.include_router(ats_router)
 
 
 @app.get("/")
