@@ -36,8 +36,10 @@ def analyze_resume(
         }
     
     result = calculate_ats_score(
-        resume.extracted_text,
-        job_description
+        db,
+        resume=resume,
+        resume_text=resume.extracted_text,
+        job_description=job_description
     )
 
     return {

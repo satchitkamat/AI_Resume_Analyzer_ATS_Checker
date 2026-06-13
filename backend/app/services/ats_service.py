@@ -5,20 +5,37 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from app.services.resume_sections import detect_resume_sections
 from app.services.resume_parser import extract_resume_sections
-from app.services.ai_feedback import generate_ai_feedback
 from app.services.section_analyzer import extract_sections, score_sections
 from app.services.resume_insights import get_resume_insights
 from app.services.profile_analyzer import (
     analyze_profiles
 )
 
-from app.services.ai_resume_review import (
-    ai_resume_review
+from app.services.job_match_service import (
+    calculate_job_match
 )
 
-from app.services.job_match_service import (
-    calculate_job_match,
-    get_job_match_feedback
+from app.services.ai_candidate_validation import (
+    ai_candidate_validation
+)
+
+from app.services.ai_hiring_recommendation import (
+    ai_hiring_recommendation
+)
+
+from app.services.ai_risk_detection import (
+    ai_risk_detection
+)
+
+from app.services.ai_interview_readiness import (
+    ai_interview_readiness
+)
+from app.services.ai_fraud_detection import (
+    ai_fraud_detection
+)
+
+from app.services.candidate_analysis_service import (
+    save_candidate_analysis
 )
 
 def clean_text(text):
@@ -125,6 +142,8 @@ def generate_suggestions(quality):
 
 
 def calculate_ats_score(
+    db,
+    resume,
     resume_text,
     job_description
 ):
@@ -205,10 +224,6 @@ def calculate_ats_score(
         resume_text
     )
 
-    suggestions = generate_suggestions(
-        quality
-    )
-
     # =====================
     # Resume Sections
     # =====================
@@ -253,6 +268,10 @@ def calculate_ats_score(
         job_skills
     )
 
+    github_technologies = profiles[
+        "github"
+    ]["repo_technologies"]
+
     github_score = profiles[
         "github"
     ]["score"]
@@ -277,9 +296,6 @@ def calculate_ats_score(
         section_score=section_score
     )
 
-    job_match_feedback = get_job_match_feedback(
-        job_match_score
-    )
     # =====================
     # Final ATS Score
     # =====================
@@ -299,33 +315,83 @@ def calculate_ats_score(
         2
     )
 
-    # =====================
-    # AI Feedback
-    # =====================
-
-    ai_feedback = generate_ai_feedback(
-        ats_score,
-        matched_skills,
-        missing_skills,
-        suggestions
+    candidate_validation = ai_candidate_validation(
+        resume_text=resume_text,
+        github_data=profiles["github"],
+        linkedin_data=profiles["linkedin"],
+        ats_score=ats_score,
+        matched_skills=matched_skills,
+        missing_skills=missing_skills,
+        job_match_score=job_match_score,
+        section_scores=section_scores
     )
 
-    # =====================
-    # Insights
-    # =====================
-
-    insights = get_resume_insights(
-        quality,
-        matched_skills,
-        missing_skills,
-        section_scores
+    hiring_recommendation = (
+        ai_hiring_recommendation(
+            ats_score=ats_score,
+            job_match_score=job_match_score,
+            candidate_validation=candidate_validation,
+            github_score=github_score,
+            linkedin_score=linkedin_score
+        )
     )
 
-    ai_analysis = ai_resume_review(
-        resume_text,
-        job_description,
+    risk_analysis = ai_risk_detection(
+        resume_text=resume_text,
+        matched_skills=matched_skills,
+        missing_skills=missing_skills,
+        github_data=profiles["github"],
+        linkedin_data=profiles["linkedin"],
+        candidate_validation=candidate_validation
     )
 
+    interview_readiness = (
+        ai_interview_readiness(
+
+            resume_text,
+
+            ats_score,
+
+            job_match_score,
+
+            candidate_validation,
+
+            risk_analysis
+        )
+    )
+    fraud_analysis = (
+        ai_fraud_detection(
+            resume_text=resume_text,
+            job_description=job_description,
+            github_profile=profiles["github"],
+            linkedin_profile=profiles["linkedin"],
+            ats_score=ats_score,
+            matched_skills=matched_skills,
+            missing_skills=missing_skills,
+            candidate_validation=candidate_validation
+        )
+    )
+
+    save_candidate_analysis(
+
+        db=db,
+    
+        resume_id=resume.id,
+    
+        ats_score=ats_score,
+    
+        candidate_validation=
+        candidate_validation,
+    
+        risk_analysis=
+        risk_analysis,
+    
+        interview_readiness=
+        interview_readiness,
+    
+        hiring_recommendation=
+        hiring_recommendation
+    )
     # =====================
     # Response
     # =====================
@@ -334,37 +400,17 @@ def calculate_ats_score(
 
         "ats_score": ats_score,
 
-        "matched_skills":
-        matched_skills,
+        "matched_skills":matched_skills,
 
-        "missing_skills":
-        missing_skills,
+        "missing_skills":missing_skills,
 
-        "quality":
-        quality,
+        "section_scores":section_scores,
 
-        "suggestions":
-        suggestions,
-
-        "ai_feedback":
-        ai_feedback,
-
-        "section_scores":
-        section_scores,
-
-        "strengths":
-        insights["strengths"],
-
-        "weaknesses":
-        insights["weaknesses"],
-
-        "profiles":
-        profiles,
+        "profiles":profiles,
 
         "score_breakdown": {
 
-            "similarity_score":
-            similarity_score,
+            "similarity_score":similarity_score,
 
             "skill_match_score":
             round(
@@ -372,8 +418,7 @@ def calculate_ats_score(
                 2
             ),
 
-            "section_score":
-            section_score,
+            "section_score":section_score,
 
             "profile_score":
             round(
@@ -381,17 +426,14 @@ def calculate_ats_score(
                 2
             )
         },
-        "job_match": {
+        "candidate_validation":candidate_validation,
 
-            "score": job_match_score,
+        "hiring_recommendation":hiring_recommendation,
 
-            "status":
-            job_match_feedback["status"],
+        "risk_analysis":risk_analysis,
 
-            "interview_chance":
-            job_match_feedback["chance"]
-        },
-        
+        "interview_readiness":interview_readiness,
 
-        "ai_analysis": ai_analysis
+        "fraud_analysis": fraud_analysis,
+
     }

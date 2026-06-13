@@ -35,25 +35,26 @@ from fastapi.security import OAuth2PasswordRequestForm
 # CREATE USER API
 # =====================================
 
-@router.post("/create-user")
+@router.post("/create-user/admin-only")
 
 def create_new_user(
     user_data: CreateUserRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
 ):
+
     result = create_user(
         db=db,
         email=user_data.email,
         username=user_data.username
     )
-
     if not result["success"]:
     
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=["Message"]
         )
-
+        
     return result
 
 # =====================================
