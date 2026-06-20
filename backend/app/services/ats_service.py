@@ -38,6 +38,10 @@ from app.services.candidate_analysis_service import (
     save_candidate_analysis
 )
 
+from app.services.pipeline import (
+    create_pipeline_entry
+)
+
 def clean_text(text):
     text = text.lower()
 
@@ -391,6 +395,11 @@ def calculate_ats_score(
     
         hiring_recommendation=
         hiring_recommendation
+    )
+
+    create_pipeline_entry(
+        db,
+        resume.id
     )
     # =====================
     # Response

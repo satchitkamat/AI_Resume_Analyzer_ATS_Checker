@@ -1,126 +1,83 @@
-from sqlalchemy.orm import Session
-
-from app.models.candidate_pipeline import (
-    CandidatePipeline
+from fastapi import (
+    APIRouter,
+    Depends
 )
 
-VALID_STATUSES = [
+from sqlalchemy.orm import Session
 
-"Applied",
+from app.core.database import (
+    get_db
+)
 
-"Screening",
+from app.schemas.pipeline import (
+    PipelineUpdateRequest
+)
 
-"Shortlisted",
+from app.services.pipeline import (
 
-"Interview Scheduled",
+    update_pipeline_status,
 
-"Interviewed",
+    get_pipeline_by_status,
 
-"Selected",
+    get_all_pipeline_candidates
+)
 
-"Rejected",
+router = APIRouter(
 
-"Hired"
+    prefix="/pipeline",
 
-]
+    tags=["Pipeline"]
+)
 
-def create_pipeline(
-    db:Session,
-    candidate_id: int
-):
-    pipeline = CandidatePipeline(
-        candidate_id=candidate_id,
-        status="Applied"
+
+@router.patch("/{resume_id}")
+def update_status(
+
+    resume_id: int,
+
+    request: PipelineUpdateRequest,
+
+    db: Session = Depends(
+        get_db
     )
-
-    db.add(pipeline)
-
-    db.commit()
-
-    db.refresh(pipeline)
-
-    return pipeline
-
-def get_candidate_pipeline(
-    db:Session,
-    candidate_id:int
 ):
-    return(
-        db.query(
-            CandidatePipeline
-        )
 
-        .filter(
-            CandidatePipeline.candidate_id == candidate_id
-        )
+    return update_pipeline_status(
 
-        .first()
-    )
-
-def update_pipeline_status(
-    db:Session,
-    candidate_id:int,
-    status:str
-):
-    if status not in VALID_STATUSES:
-        raise ValueError(
-            "Invalid pipeline status"
-        )
-    
-    candidate = get_candidate_pipeline(
         db,
-        candidate_id
+
+        resume_id,
+
+        request.status
     )
 
-    if not candidate:
-        raise ValueError(
-            "candidate pipeline not found"
-        )
-    
-    candidate.status = status
 
-    db.commit()
+@router.get("/")
+def get_all_candidates(
 
-    db.refresh(candidate)
-
-    return candidate
-
-def auto_pipeline_status(
-    ats_score:float,
-    hiring_recommendation:dict
+    db: Session = Depends(
+        get_db
+    )
 ):
-    decision = (
-        hiring_recommendation.get("decision", "").lower()
+
+    return get_all_pipeline_candidates(
+        db
     )
 
-    if decision == "strong hire": 
-        return "Shortlisted" 
-    
-    if decision == "hire": 
-        return "Shortlisted" 
-    
-    if decision == "interview": 
-        return "Interview Scheduled" 
-    
-    if decision == "reject": 
-        return "Rejected" 
-    
-    if ats_score >= 80: 
-        return "Shortlisted" 
-    
-    if ats_score >= 60: 
-        return "Screening" 
-    
-    return "Rejected"
 
-def get_pipeline_statistics(
-    db:Session,
+@router.get("/status/{status}")
+def get_candidates_by_status(
+
+    status: str,
+
+    db: Session = Depends(
+        get_db
+    )
 ):
-    stats = {}
 
-    for status in VALID_STATUSES:
-        stats[status] = (
-            db.query(CandidatePipeline).filter(CandidatePipeline.status==status).count()
-        )
+    return get_pipeline_by_status(
 
-    return stats
+        db,
+
+        status
+    )

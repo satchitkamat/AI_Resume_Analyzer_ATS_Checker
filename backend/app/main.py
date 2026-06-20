@@ -14,6 +14,13 @@ from app.api.routes.candidate_ranking import router as candidateRanking_router
 
 from app.api.routes.candidate_search import router as candidateSearch_router
 
+from app.api.routes.pipeline import (
+    router as pipeline_router
+)
+
+from app.api.routes.bulk_screening import router as bulk_screening_router
+
+
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -39,6 +46,16 @@ app.include_router(dashboard_router)
 
 # Candidate Search Router
 app.include_router(candidateSearch_router)
+
+# Pipeline Route
+app.include_router(
+    pipeline_router
+)
+
+# Bulk Screening
+app.include_router(
+    bulk_screening_router
+)
 
 @app.get("/")
 def root():

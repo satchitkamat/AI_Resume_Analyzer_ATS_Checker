@@ -2,14 +2,18 @@ from sqlalchemy import (
     Column,
     Integer,
     String,
-    ForeignKey
+    ForeignKey,
+    DateTime
 )
+
+from sqlalchemy.sql import func
 
 from app.core.database import Base
 
+
 class CandidatePipeline(Base):
 
-    __tablename__ = "candidate_pipline"
+    __tablename__ = "candidate_pipeline"
 
     id = Column(
         Integer,
@@ -17,12 +21,20 @@ class CandidatePipeline(Base):
         index=True
     )
 
-    candidate_id = Column(
+    resume_id = Column(
         Integer,
-        ForeignKey("resumes.id")
+        ForeignKey("resumes.id"),
+        nullable=False
     )
 
     status = Column(
         String,
+        nullable=False,
         default="Applied"
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
     )
